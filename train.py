@@ -58,8 +58,9 @@ class MyDataset(Dataset):
 def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     since = time.time()
     best_acc = 0.0
-    weights = 'weights' + os.sep
-    latest = weights + 'latest.pt'
+    weights = './wights/'
+    latest = weights+'latest.pt'
+    print(latest)
     for epoch in range(num_epochs):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
@@ -99,6 +100,12 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum(preds == labels.data)
                 if i % 50 == 0:
+                    torch.save({
+                        'epoch': epoch,
+                        'model_state_dict': model.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict(),
+                        'loss': loss,
+                    }, latest)
                     print('epoch: {}, loss: {:.4}'.format(i, loss.data.item()))
 
             epoch_loss = running_loss / 39620
@@ -118,7 +125,12 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     print('Training complete in {:.0f}m {:.0f}s'.format(
         time_elapsed // 60, time_elapsed % 60))
     print('Best val Acc: {:4f}'.format(best_acc))
-    torch.save(model.state_dict(), latest)
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': loss,
+         }, latest)
     return model
 
 dataset = MyDataset('train_face_value_label.csv')
@@ -131,6 +143,15 @@ dataloader = DataLoader(dataset,
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 model_ft = models.resnet18(pretrained=False)
+# model_ft.classifier = nn.Sequential(
+#             nn.Linear(512 * 7 * 7, 4096),
+#             nn.ReLU(True),
+#             nn.Dropout(),
+#             nn.Linear(4096, 4096),
+#             nn.ReLU(True),
+#             nn.Dropout(),
+#             nn.Linear(4096, 9),
+#         )
 num_ftrs = model_ft.fc.in_features
 model_ft.fc = nn.Linear(num_ftrs, 9)
 
@@ -145,6 +166,6 @@ optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
 # Decay LR by a factor of 0.1 every 7 epochs
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
-                      num_epochs=25)
+                      num_epochs=20)
 
 
